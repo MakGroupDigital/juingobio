@@ -1,0 +1,11 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="JuingoBIO Favicon">
+  <defs>
+    <linearGradient id="a" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1A3C34"/>
+      <stop offset="100%" stop-color="#4CAF50"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#a)"/>
+  <path d="M36 84c0-25 20-45 45-45 8 0 16 2 22 6-3 14-15 29-36 38-14 6-24 16-27 25-3-7-4-15-4-24z" fill="#CDDC39"/>
+  <text x="64" y="103" text-anchor="middle" font-family="Georgia, serif" font-size="34" fill="white">J</text>
+</svg>

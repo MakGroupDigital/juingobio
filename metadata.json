@@ -1,0 +1,9 @@
+{
+  "name": "JuingoBIO Premium",
+  "description": "Plateforme premium de distribution de produits bio en circuit court pour B2B et B2C.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}

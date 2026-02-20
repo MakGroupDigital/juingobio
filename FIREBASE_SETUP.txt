@@ -1,0 +1,31 @@
+FIREBASE SETUP INSTRUCTIONS
+============================
+
+1. Install Firebase CLI globally:
+   npm install -g firebase-tools
+
+2. Login to Firebase:
+   firebase login
+
+3. Initialize Firebase in the project:
+   firebase init
+
+   When prompted:
+   - Select "Firestore" and "Hosting"
+   - Choose project: studio-2853082048-41992
+   - Use existing firestore.rules file
+   - Use existing firestore.indexes.json file
+   - Use existing firebase.json file
+   - Set public directory to "dist"
+   - Configure as single-page app: Yes
+   - Overwrite existing files: No
+
+4. Deploy Firestore rules:
+   firebase deploy --only firestore:rules
+
+5. The app is now ready for development with permissive Firestore rules.
+
+IMPORTANT: These rules are VERY PERMISSIVE and should ONLY be used for development.
+Before deploying to production, implement proper security rules.
+
+Firestore Rules Location: firestore.rules

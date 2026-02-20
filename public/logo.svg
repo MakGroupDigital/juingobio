@@ -1,0 +1,18 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="JuingoBIO Logo">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1A3C34"/>
+      <stop offset="100%" stop-color="#4CAF50"/>
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#CDDC39"/>
+      <stop offset="100%" stop-color="#8BC34A"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  <circle cx="512" cy="512" r="360" fill="rgba(255,255,255,0.08)"/>
+  <path d="M512 258c126 0 228 102 228 228s-102 228-228 228-228-102-228-228 102-228 228-228zm0 58c-94 0-170 76-170 170s76 170 170 170 170-76 170-170-76-170-170-170z" fill="#fff" opacity="0.85"/>
+  <path d="M512 364c-96 0-172 76-172 172 0 45 17 86 45 117 17-59 67-113 137-143 68-30 116-79 133-123-31-15-66-23-103-23z" fill="url(#leaf)"/>
+  <path d="M458 605c34-38 81-66 135-84" stroke="#1A3C34" stroke-width="24" stroke-linecap="round"/>
+  <text x="512" y="842" text-anchor="middle" font-family="'Playfair Display', serif" font-size="112" fill="#fff">J</text>
+</svg>
