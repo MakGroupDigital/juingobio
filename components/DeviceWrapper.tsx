@@ -1,11 +1,33 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface DeviceWrapperProps {
   children: React.ReactNode;
 }
 
 const DeviceWrapper: React.FC<DeviceWrapperProps> = ({ children }) => {
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const updateViewportMode = () => {
+      setIsDesktop(window.innerWidth >= 1024);
+    };
+
+    updateViewportMode();
+    window.addEventListener('resize', updateViewportMode);
+    return () => window.removeEventListener('resize', updateViewportMode);
+  }, []);
+
+  if (!isDesktop) {
+    return (
+      <div className="w-full h-[100dvh] bg-white overflow-hidden">
+        <div className="w-full h-full bg-white overflow-y-auto scrollbar-hide relative">
+          {children}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-200 p-4">
       <div className="relative w-[393px] h-[852px] bg-black rounded-[55px] shadow-2xl overflow-hidden border-[8px] border-black">
