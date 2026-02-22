@@ -34,6 +34,7 @@ import {
   updateProduct
 } from './services/firebaseService';
 import { requestNativeNotificationPermission, sendNativeNotification } from './services/notificationService';
+import { registerBackgroundPush } from './services/backgroundPushService';
 
 type ViewState = 'splash' | 'onboarding' | 'auth' | 'split' | 'main' | 'cart' | 'tracking' | 'profile' | 'settings' | 'orders' | 'order-detail' | 'payment' | 'user-onboarding' | 'admin';
 
@@ -219,6 +220,20 @@ const App: React.FC = () => {
       void requestNativeNotificationPermission();
     }
   }, [authUser, userMode]);
+
+  useEffect(() => {
+    if (!authUser?.uid || userMode === 'ADMIN') return;
+    let cleanup: (() => void) | null = null;
+    void registerBackgroundPush(authUser.uid, ({ title, body }) => {
+      setNotification(`${title}: ${body}`);
+      setTimeout(() => setNotification(null), 2800);
+    }).then((unsubscribe) => {
+      if (typeof unsubscribe === 'function') cleanup = unsubscribe;
+    });
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, [authUser?.uid, userMode]);
 
   useEffect(() => {
     if (!authUser?.uid || userMode === 'ADMIN') return;

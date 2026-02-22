@@ -9,6 +9,11 @@ lerna-debug.log*
 
 node_modules
 dist
+.firebase/
+.gradle-local/
+.npm-cache/
+android/*.keystore
+android/key.properties
 dist-ssr
 *.local
 
