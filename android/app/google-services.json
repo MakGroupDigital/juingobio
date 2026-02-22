@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "589474614344",
+    "project_id": "studio-2853082048-41992",
+    "storage_bucket": "studio-2853082048-41992.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:589474614344:android:5564c066b6bca0a23fdc7d",
+        "android_client_info": {
+          "package_name": "com.makgroup.juingobio"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "589474614344-4kalnfdp9bsgqh9r13lj98a0cg09861c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCRCBah4Vn13iomymbiuOZZdfxg6yAQK_I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "589474614344-4kalnfdp9bsgqh9r13lj98a0cg09861c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

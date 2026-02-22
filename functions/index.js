@@ -30,42 +30,59 @@ exports.onOrderStatusChanged = functions.firestore
   }
 
   const user = userSnap.data() || {};
-  const webToken = user?.push_tokens?.web_fcm;
-  if (!webToken || typeof webToken !== 'string') {
-    logger.info(`No web_fcm token found for ${after.user_id}`);
+  const webToken = typeof user?.push_tokens?.web_fcm === 'string' ? user.push_tokens.web_fcm : null;
+  const androidToken = typeof user?.push_tokens?.android_fcm === 'string' ? user.push_tokens.android_fcm : null;
+  if (!webToken && !androidToken) {
+    logger.info(`No push token found for ${after.user_id}`);
     return;
   }
 
   const title = 'Mise a jour commande';
   const body = `Commande #${orderId}: ${statusLabel(after.status)}`;
 
-  const message = {
-    token: webToken,
-    notification: {
-      title,
-      body
-    },
-    data: {
-      orderId: String(orderId),
-      status: String(after.status || ''),
-      url: '/orders'
-    },
-    webpush: {
-      notification: {
-        title,
-        body,
-        icon: '/icons/icon-192.png',
-        badge: '/icons/icon-192.png'
+  const messages = [];
+  if (webToken) {
+    messages.push({
+      token: webToken,
+      notification: { title, body },
+      data: {
+        orderId: String(orderId),
+        status: String(after.status || ''),
+        url: '/orders'
       },
-      fcmOptions: {
-        link: '/orders'
+      webpush: {
+        notification: {
+          title,
+          body,
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png'
+        },
+        fcmOptions: { link: '/orders' }
       }
-    }
-  };
+    });
+  }
+  if (androidToken) {
+    messages.push({
+      token: androidToken,
+      notification: { title, body },
+      data: {
+        orderId: String(orderId),
+        status: String(after.status || ''),
+        route: 'orders'
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          channelId: 'default',
+          sound: 'default'
+        }
+      }
+    });
+  }
 
   try {
-    await admin.messaging().send(message);
-    logger.info(`Push sent for order ${orderId} to user ${after.user_id}`);
+    const result = await admin.messaging().sendEach(messages);
+    logger.info(`Push sent for order ${orderId} to user ${after.user_id}`, result);
   } catch (error) {
     logger.error('FCM send failed', error);
     const code = error?.errorInfo?.code || '';
@@ -73,14 +90,10 @@ exports.onOrderStatusChanged = functions.firestore
       code === 'messaging/registration-token-not-registered' ||
       code === 'messaging/invalid-registration-token'
     ) {
-      await admin.firestore().doc(`users/${after.user_id}`).set(
-        {
-          push_tokens: {
-            web_fcm: admin.firestore.FieldValue.delete()
-          }
-        },
-        { merge: true }
-      );
+      const cleanup = {};
+      if (webToken) cleanup.web_fcm = admin.firestore.FieldValue.delete();
+      if (androidToken) cleanup.android_fcm = admin.firestore.FieldValue.delete();
+      await admin.firestore().doc(`users/${after.user_id}`).set({ push_tokens: cleanup }, { merge: true });
       logger.info(`Invalid token removed for user ${after.user_id}`);
     }
   }
