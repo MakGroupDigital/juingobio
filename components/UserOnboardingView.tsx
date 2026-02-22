@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, Phone, Building2, Home } from 'lucide-react';
+import { ChevronRight, Phone, Building2, Home, Shield } from 'lucide-react';
 import { getUserData } from '../services/firebaseService';
 
 interface UserOnboardingViewProps {
@@ -9,7 +9,7 @@ interface UserOnboardingViewProps {
 
 const UserOnboardingView: React.FC<UserOnboardingViewProps> = ({ authUser, onComplete }) => {
   const [phone, setPhone] = useState('');
-  const [userType, setUserType] = useState<'B2C' | 'B2B' | null>(null);
+  const [userType, setUserType] = useState<'B2C' | 'B2B' | 'ADMIN' | null>(null);
   const [establishmentType, setEstablishmentType] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userData, setUserData] = useState<any>(null);
@@ -131,6 +131,28 @@ const UserOnboardingView: React.FC<UserOnboardingViewProps> = ({ authUser, onCom
               </div>
               {userType === 'B2B' && (
                 <div className="ml-auto w-5 h-5 rounded-full bg-earthOrange flex items-center justify-center">
+                  <span className="text-white text-xs">✓</span>
+                </div>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setUserType('ADMIN');
+                setEstablishmentType(null);
+              }}
+              className={`w-full p-4 rounded-15 border-2 transition-all flex items-center gap-3 ${
+                userType === 'ADMIN'
+                  ? 'border-deepGreen bg-deepGreen/5'
+                  : 'border-slate-200 bg-white hover:border-slate-300'
+              }`}
+            >
+              <Shield size={24} className={userType === 'ADMIN' ? 'text-deepGreen' : 'text-slate-400'} />
+              <div className="text-left">
+                <p className="font-bold text-deepGreen">Admin</p>
+                <p className="text-xs text-slate-500">Gestion de la plateforme</p>
+              </div>
+              {userType === 'ADMIN' && (
+                <div className="ml-auto w-5 h-5 rounded-full bg-deepGreen flex items-center justify-center">
                   <span className="text-white text-xs">✓</span>
                 </div>
               )}

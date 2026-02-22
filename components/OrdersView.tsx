@@ -1,60 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Order } from '../types';
-import { ChevronRight, Truck, Home, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { ChevronRight, Truck, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface OrdersViewProps {
   onNav: (view: string) => void;
   onSelectOrder: (order: Order) => void;
+  orders: Order[];
 }
-
-// Mock orders data
-const MOCK_ORDERS: Order[] = [
-  {
-    id: 'ORD-001',
-    user_id: 'user1',
-    user_type: 'B2C',
-    items: [
-      { product_id: '1', name: 'Tomates Bio', qty: 2, price_at_purchase: 3.5, image: 'https://images.unsplash.com/photo-1592841494900-055cc137145b?q=80&w=400' }
-    ],
-    status: 'delivering',
-    total_ht: 7,
-    total_ttc: 7.7,
-    created_at: Date.now() - 3600000,
-    delivery_address: 'Rue de la Paix, Kinshasa',
-    delivery_lat: -4.3276,
-    delivery_lng: 15.3136,
-    driver_lat: -4.3250,
-    driver_lng: 15.3100,
-    driver_name: 'Jean Moto',
-    estimated_delivery: Date.now() + 1200000
-  },
-  {
-    id: 'ORD-002',
-    user_id: 'user1',
-    user_type: 'B2C',
-    items: [
-      { product_id: '2', name: 'Laitue Bio', qty: 1, price_at_purchase: 2.5, image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=400' }
-    ],
-    status: 'completed',
-    total_ht: 2.5,
-    total_ttc: 2.75,
-    created_at: Date.now() - 86400000,
-    delivery_address: 'Rue de la Paix, Kinshasa'
-  },
-  {
-    id: 'ORD-003',
-    user_id: 'user1',
-    user_type: 'B2C',
-    items: [
-      { product_id: '3', name: 'Carottes Bio', qty: 3, price_at_purchase: 2, image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?q=80&w=400' }
-    ],
-    status: 'processing',
-    total_ht: 6,
-    total_ttc: 6.6,
-    created_at: Date.now() - 7200000,
-    delivery_address: 'Rue de la Paix, Kinshasa'
-  }
-];
 
 const getStatusLabel = (status: string) => {
   const labels: Record<string, string> = {
@@ -91,12 +43,11 @@ const getStatusIcon = (status: string) => {
   }
 };
 
-const OrdersView: React.FC<OrdersViewProps> = ({ onNav, onSelectOrder }) => {
-  const [orders] = useState<Order[]>(MOCK_ORDERS);
+const OrdersView: React.FC<OrdersViewProps> = ({ onNav, onSelectOrder, orders }) => {
+  const sortedOrders = [...orders].sort((a, b) => b.created_at - a.created_at);
 
   return (
     <div className="h-full bg-[#F9FBF9] flex flex-col">
-      {/* Header */}
       <div className="p-6 bg-white border-b border-slate-100 flex justify-between items-center">
         <button onClick={() => onNav('main')} className="text-deepGreen">
           <ChevronRight className="rotate-180" size={24} />
@@ -105,9 +56,8 @@ const OrdersView: React.FC<OrdersViewProps> = ({ onNav, onSelectOrder }) => {
         <div className="w-6"></div>
       </div>
 
-      {/* Orders List */}
       <div className="flex-1 overflow-y-auto scrollbar-hide">
-        {orders.length === 0 ? (
+        {sortedOrders.length === 0 ? (
           <div className="flex items-center justify-center h-full p-8">
             <div className="text-center">
               <Truck size={48} className="text-slate-300 mx-auto mb-4" />
@@ -117,14 +67,13 @@ const OrdersView: React.FC<OrdersViewProps> = ({ onNav, onSelectOrder }) => {
           </div>
         ) : (
           <div className="p-4 space-y-3">
-            {orders.map((order, index) => (
+            {sortedOrders.map((order, index) => (
               <div
                 key={order.id}
                 className="bg-white rounded-20 p-4 border border-slate-100 cursor-pointer hover:shadow-md transition-all animate-in fade-in slide-in-from-bottom-4 duration-500"
                 style={{ animationDelay: `${index * 100}ms` }}
                 onClick={() => onSelectOrder(order)}
               >
-                {/* Order Header */}
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <p className="text-xs text-slate-400 font-semibold">Commande #{order.id}</p>
@@ -136,11 +85,10 @@ const OrdersView: React.FC<OrdersViewProps> = ({ onNav, onSelectOrder }) => {
                   </div>
                 </div>
 
-                {/* Items Preview */}
                 <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide">
                   {order.items.slice(0, 3).map((item, i) => (
                     <img
-                      key={i}
+                      key={`${order.id}-item-${i}`}
                       src={item.image}
                       alt={item.name}
                       className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
@@ -153,19 +101,17 @@ const OrdersView: React.FC<OrdersViewProps> = ({ onNav, onSelectOrder }) => {
                   )}
                 </div>
 
-                {/* Progress Bar for Delivering */}
                 {order.status === 'delivering' && (
                   <div className="mb-3">
                     <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                       <div className="h-full bg-earthOrange rounded-full animate-pulse" style={{ width: '65%' }}></div>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-1">Livraison dans ~20 min</p>
+                    <p className="text-[10px] text-slate-500 mt-1">Livraison en cours</p>
                   </div>
                 )}
 
-                {/* Footer */}
                 <div className="flex justify-between items-center pt-3 border-t border-slate-100">
-                  <span className="text-sm font-bold text-deepGreen">{order.total_ttc} CDF</span>
+                  <span className="text-sm font-bold text-deepGreen">{order.total_ttc.toFixed(2)} CDF</span>
                   <ChevronRight size={16} className="text-slate-300" />
                 </div>
               </div>

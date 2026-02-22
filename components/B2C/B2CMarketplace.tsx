@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect, useRef } from 'react';
-import { Product, OrderItem } from '../../types';
-import { PRODUCTS, PRODUCERS } from '../../constants';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { Product, OrderItem, Category } from '../../types';
+import { PRODUCERS } from '../../constants';
 import { getGeminiStory } from '../../services/geminiService';
 import { ChevronLeft, ChevronRight, Share2, X } from 'lucide-react';
 
@@ -10,27 +9,56 @@ interface B2CMarketplaceProps {
   productIdToOpen?: string;
   language?: 'fr' | 'en';
   dataSaverMode?: boolean;
+  products: Product[];
+  categories: Category[];
 }
 
-const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen, language = 'fr', dataSaverMode = false }) => {
+const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({
+  onAdd,
+  productIdToOpen,
+  language = 'fr',
+  dataSaverMode = false,
+  products,
+  categories
+}) => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Tous');
   const [story, setStory] = useState<string | null>(null);
   const [loadingStory, setLoadingStory] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const storyCacheRef = useRef<Record<string, string>>({});
   const activeProductIdRef = useRef<string | null>(null);
   const storyRequestIdRef = useRef(0);
 
-  // Auto-open product from URL parameter
+  const availableProducts = useMemo(
+    () => products.filter((p) => p.is_active && (p.available_for || ['B2B', 'B2C']).includes('B2C')),
+    [products]
+  );
+
+  const availableCategories = useMemo(() => {
+    const base = categories
+      .filter((cat) => cat.is_active && (cat.target === 'ALL' || cat.target === 'B2C'))
+      .map((cat) => cat.name);
+
+    const fromProducts = Array.from(new Set(availableProducts.map((p) => p.category)));
+    return ['Tous', ...Array.from(new Set([...base, ...fromProducts]))];
+  }, [categories, availableProducts]);
+
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === 'Tous') return availableProducts;
+    return availableProducts.filter((product) => product.category === selectedCategory);
+  }, [availableProducts, selectedCategory]);
+
   useEffect(() => {
     if (productIdToOpen) {
-      const product = PRODUCTS.find(p => p.id === productIdToOpen);
+      const product = availableProducts.find((p) => p.id === productIdToOpen);
       if (product) {
         handleOpenProduct(product);
       }
     }
-  }, [productIdToOpen]);
+  }, [productIdToOpen, availableProducts]);
 
   const handleOpenProduct = (product: Product) => {
     setSelectedProduct(product);
@@ -60,7 +88,7 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
 
     void (async () => {
       try {
-        const producer = PRODUCERS.find(p => p.id === product.producer_id);
+        const producer = PRODUCERS.find((p) => p.id === product.producer_id);
         const text = await getGeminiStory(product.name, producer?.farm_name || 'Nos Terres');
         storyCacheRef.current[product.id] = text;
 
@@ -85,13 +113,17 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
 
   const handleNextImage = () => {
     if (selectedProduct) {
-      setCurrentImageIndex((prev) => (prev + 1) % selectedProduct.images.length);
+      const mediaCount = selectedProduct.images.length + (selectedProduct.videos?.length || 0);
+      if (!mediaCount) return;
+      setCurrentImageIndex((prev) => (prev + 1) % mediaCount);
     }
   };
 
   const handlePrevImage = () => {
     if (selectedProduct) {
-      setCurrentImageIndex((prev) => (prev - 1 + selectedProduct.images.length) % selectedProduct.images.length);
+      const mediaCount = selectedProduct.images.length + (selectedProduct.videos?.length || 0);
+      if (!mediaCount) return;
+      setCurrentImageIndex((prev) => (prev - 1 + mediaCount) % mediaCount);
     }
   };
 
@@ -107,9 +139,17 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
     const link = generateShareLink();
     navigator.clipboard.writeText(link);
     setShowShareModal(false);
-    // Show toast notification
     alert('Lien copié !');
   };
+
+  const selectedMedia = selectedProduct
+    ? [
+        ...selectedProduct.images.map((src) => ({ type: 'image' as const, src })),
+        ...(selectedProduct.videos || []).map((src) => ({ type: 'video' as const, src }))
+      ]
+    : [];
+
+  const currentMedia = selectedMedia[currentImageIndex];
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-5 duration-500">
@@ -126,20 +166,22 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
         </div>
       </div>
 
-      {/* Categories */}
       <div className="flex space-x-3 px-4 pt-5 pb-4 overflow-x-auto scrollbar-hide">
-        {['Tous', 'Fruits', 'Légumes', 'Épicerie'].map((cat, i) => (
-          <button key={cat} className={`px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap border ${i === 0 ? 'bg-deepGreen text-white border-deepGreen' : 'bg-white text-deepGreen border-slate-200 shadow-sm'}`}>
+        {availableCategories.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`px-5 py-2 rounded-full text-xs font-bold whitespace-nowrap border ${selectedCategory === cat ? 'bg-deepGreen text-white border-deepGreen' : 'bg-white text-deepGreen border-slate-200 shadow-sm'}`}
+          >
             {cat}
           </button>
         ))}
       </div>
 
-      {/* Grid */}
       <div className="grid grid-cols-2 gap-4 px-4 pb-6">
-        {PRODUCTS.map((product, index) => (
-          <div 
-            key={product.id} 
+        {filteredProducts.map((product, index) => (
+          <div
+            key={product.id}
             className="bg-white rounded-30 p-3 shadow-md border border-slate-100 cursor-pointer active:scale-95 transition-transform animate-in fade-in slide-in-from-bottom-4 duration-500 hover:shadow-xl"
             style={{ animationDelay: `${index * 100}ms` }}
             onClick={() => handleOpenProduct(product)}
@@ -152,7 +194,7 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
             <p className="text-[10px] text-gray-500 mb-2">{product.category}</p>
             <div className="flex justify-between items-center">
               <span className="text-earthOrange font-bold text-sm">{product.price_b2c} CDF</span>
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onAdd({
@@ -172,28 +214,44 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
         ))}
       </div>
 
-      {/* Product Modal */}
       {selectedProduct && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeProductModal}></div>
           <div className="relative w-full max-w-[393px] bg-white rounded-t-[40px] p-8 animate-in slide-in-from-bottom-full duration-300 max-h-[90vh] overflow-y-auto">
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
-            
-            {/* Image Gallery */}
+
             <div className="relative mb-6 group">
-              <img 
-                src={selectedProduct.images[currentImageIndex]} 
-                alt={selectedProduct.name} 
-                className="w-full h-48 object-cover rounded-30 transition-all duration-300" 
-              />
-              
-              {/* Image Counter */}
-              <div className="absolute top-3 right-3 bg-black/50 text-white px-3 py-1 rounded-full text-xs font-bold">
-                {currentImageIndex + 1}/{selectedProduct.images.length}
+              <div
+                onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
+                onTouchEnd={(e) => {
+                  if (touchStartX == null) return;
+                  const delta = e.changedTouches[0].clientX - touchStartX;
+                  if (delta <= -40) handleNextImage();
+                  if (delta >= 40) handlePrevImage();
+                  setTouchStartX(null);
+                }}
+              >
+                {currentMedia?.type === 'video' ? (
+                  <video
+                    src={currentMedia.src}
+                    className="w-full h-48 object-cover rounded-30 transition-all duration-300 bg-black"
+                    controls
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={currentMedia?.src || selectedProduct.images[0]}
+                    alt={selectedProduct.name}
+                    className="w-full h-48 object-cover rounded-30 transition-all duration-300"
+                  />
+                )}
               </div>
-              
-              {/* Navigation Arrows */}
-              {selectedProduct.images.length > 1 && (
+
+              <div className="absolute top-3 right-3 bg-black/50 text-white px-3 py-1 rounded-full text-xs font-bold">
+                {Math.min(currentImageIndex + 1, Math.max(1, selectedMedia.length))}/{Math.max(1, selectedMedia.length)}
+              </div>
+
+              {selectedMedia.length > 1 && (
                 <>
                   <button
                     onClick={handlePrevImage}
@@ -209,13 +267,12 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
                   </button>
                 </>
               )}
-              
-              {/* Image Dots */}
-              {selectedProduct.images.length > 1 && (
+
+              {selectedMedia.length > 1 && (
                 <div className="flex justify-center gap-2 mt-3">
-                  {selectedProduct.images.map((_, i) => (
+                  {selectedMedia.map((media, i) => (
                     <button
-                      key={i}
+                      key={`media-dot-${i}-${media.type}`}
                       onClick={() => setCurrentImageIndex(i)}
                       className={`w-2 h-2 rounded-full transition-all ${
                         i === currentImageIndex ? 'bg-earthOrange w-6' : 'bg-slate-300'
@@ -226,7 +283,6 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
               )}
             </div>
 
-            {/* Header with Share */}
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h2 className="font-serif text-3xl text-deepGreen mb-2">{selectedProduct.name}</h2>
@@ -239,7 +295,12 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
                 <Share2 size={18} className="text-bioGreen" />
               </button>
             </div>
-            
+
+            <div className="bg-slate-50 p-4 rounded-20 mb-4 border border-slate-100">
+              <h4 className="text-[10px] uppercase tracking-wider font-bold text-deepGreen mb-2">Description du produit</h4>
+              <p className="text-sm text-slate-700 leading-relaxed">{selectedProduct.description || 'Description indisponible.'}</p>
+            </div>
+
             <div className="bg-deepGreen/5 p-4 rounded-20 mb-6 border border-deepGreen/10">
               <h4 className="text-[10px] uppercase tracking-wider font-bold text-bioGreen mb-2">Ma Terre & Histoire</h4>
               {loadingStory ? (
@@ -252,15 +313,15 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
               )}
             </div>
 
-            <button 
-                onClick={() => {
-                  onAdd({
-                    product_id: selectedProduct.id,
-                    name: selectedProduct.name,
-                    image: selectedProduct.images[0],
-                    qty: 1,
-                    price_at_purchase: selectedProduct.price_b2c
-                  });
+            <button
+              onClick={() => {
+                onAdd({
+                  product_id: selectedProduct.id,
+                  name: selectedProduct.name,
+                  image: selectedProduct.images[0],
+                  qty: 1,
+                  price_at_purchase: selectedProduct.price_b2c
+                });
                 closeProductModal();
               }}
               className="w-full bg-earthOrange text-white py-4 rounded-20 font-bold text-lg shadow-xl shadow-earthOrange/20 active:scale-95 transition-transform"
@@ -271,7 +332,6 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
         </div>
       )}
 
-      {/* Share Modal */}
       {showShareModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowShareModal(false)}></div>
@@ -282,13 +342,13 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
             >
               <X size={20} />
             </button>
-            
+
             <h3 className="font-serif text-2xl text-deepGreen mb-4">Partager ce produit</h3>
-            
+
             <div className="bg-slate-100 p-4 rounded-20 mb-4 break-all">
               <p className="text-xs text-slate-600 font-mono">{generateShareLink()}</p>
             </div>
-            
+
             <div className="space-y-2">
               <button
                 onClick={copyToClipboard}
@@ -296,7 +356,7 @@ const B2CMarketplace: React.FC<B2CMarketplaceProps> = ({ onAdd, productIdToOpen,
               >
                 Copier le lien
               </button>
-              
+
               <button
                 onClick={() => {
                   const link = generateShareLink();

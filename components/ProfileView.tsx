@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Settings, Package, CreditCard, LogOut, Award, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Settings, Package, CreditCard, LogOut, Award, ShieldCheck, Shield } from 'lucide-react';
 import { UserType } from '../types';
 import { signOutUser, getUserData } from '../services/firebaseService';
 
@@ -8,9 +8,10 @@ interface ProfileViewProps {
   onNav: (view: any) => void;
   userMode: UserType | null;
   authUser?: any;
+  canAccessAdmin?: boolean;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ onNav, userMode, authUser }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ onNav, userMode, authUser, canAccessAdmin = false }) => {
   const [userData, setUserData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -96,6 +97,20 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onNav, userMode, authUser }) 
               <p className="text-[10px] text-slate-400">Visa •••• 4521</p>
             </div>
           </button>
+          {canAccessAdmin && (
+            <button
+              onClick={() => onNav('admin')}
+              className="w-full glass p-5 rounded-20 flex items-center gap-4 hover:bg-slate-50 transition-colors"
+            >
+              <div className="w-10 h-10 bg-earthOrange/10 text-earthOrange rounded-full flex items-center justify-center">
+                <Shield size={20} />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-bold text-sm text-deepGreen">Dashboard Admin</p>
+                <p className="text-[10px] text-slate-400">Gérer produits, commandes, catégories</p>
+              </div>
+            </button>
+          )}
 
           <div className="pt-10">
             <button 

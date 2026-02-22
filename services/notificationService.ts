@@ -20,3 +20,15 @@ export const sendNativeTestNotification = (title: string, body: string) => {
   });
   return true;
 };
+
+export const sendNativeNotification = (title: string, body: string) => {
+  if (!isNativeNotificationSupported()) return false;
+  if (Notification.permission !== 'granted') return false;
+
+  new Notification(title, {
+    body,
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png'
+  });
+  return true;
+};

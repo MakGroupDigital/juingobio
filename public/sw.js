@@ -1,4 +1,4 @@
-const CACHE_NAME = 'juingobio-pwa-v1';
+const CACHE_NAME = 'juingobio-pwa-v2';
 const OFFLINE_URL = '/offline.html';
 const PRECACHE_URLS = ['/', '/index.html', OFFLINE_URL, '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
@@ -16,6 +16,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  if (!event.request.url.startsWith('http://') && !event.request.url.startsWith('https://')) return;
 
   event.respondWith(
     caches.match(event.request).then((cached) => {
@@ -23,6 +24,9 @@ self.addEventListener('fetch', (event) => {
 
       return fetch(event.request)
         .then((response) => {
+          if (response.status !== 200 || response.type === 'opaque') {
+            return response;
+          }
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           return response;

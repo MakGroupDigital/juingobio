@@ -40,6 +40,12 @@ interface AppSettings {
 }
 
 const STORAGE_KEY = 'juingobio-settings';
+const normalizeUserType = (raw: any): UserType => {
+  if (typeof raw !== 'string') return 'B2C';
+  const value = raw.toUpperCase();
+  if (value === 'B2B' || value === 'B2C' || value === 'ADMIN') return value as UserType;
+  return 'B2C';
+};
 
 const SettingsView: React.FC<SettingsViewProps> = ({
   onNav,
@@ -71,6 +77,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [nativePermission, setNativePermission] = useState<NotificationPermission>('default');
+  const isAdminAccount = normalizeUserType(userMode) === 'ADMIN';
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -81,7 +88,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         const baseSettings: AppSettings = {
           displayName: authUser?.displayName || '',
           phone: '',
-          userType: userMode || 'B2C',
+          userType: normalizeUserType(userMode),
           establishmentName: '',
           establishmentType: '',
           deliveryAddress: '',
@@ -107,7 +114,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
               ...merged,
               displayName: remoteData.displayName || merged.displayName,
               phone: remoteData.phone || merged.phone,
-              userType: remoteData.userType || merged.userType,
+              userType: normalizeUserType(remoteData.userType || merged.userType),
               establishmentName: remoteData.establishmentName || merged.establishmentName,
               establishmentType: remoteData.establishmentType || merged.establishmentType,
               deliveryAddress: remoteData.delivery_address || merged.deliveryAddress,
@@ -164,7 +171,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   const handleSave = () => {
     setIsSaving(true);
 
-    const nextMode = settings.userType;
+    const nextMode = isAdminAccount
+      ? 'ADMIN'
+      : (settings.userType === 'ADMIN' ? 'B2C' : normalizeUserType(settings.userType));
     onUserModeChange(nextMode);
     onAppPreferencesChange(settings.appPreferences);
 
@@ -178,7 +187,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         photoURL: authUser.photoURL || '',
         displayName: settings.displayName || authUser.displayName || '',
         phone: settings.phone,
-        userType: settings.userType,
+        userType: nextMode,
         establishmentName: settings.userType === 'B2B' ? settings.establishmentName : null,
         establishmentType: settings.userType === 'B2B' ? settings.establishmentType : null,
         delivery_address: settings.deliveryAddress,
@@ -265,22 +274,28 @@ const SettingsView: React.FC<SettingsViewProps> = ({
 
         <div className="bg-white rounded-20 p-5 border border-slate-100">
           <p className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Mode utilisateur</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => updateField('userType', 'B2C')}
-              className={`p-3 rounded-15 border-2 flex items-center justify-center gap-2 ${settings.userType === 'B2C' ? 'border-bioGreen bg-bioGreen/5' : 'border-slate-200'}`}
-            >
-              <Home size={16} className="text-bioGreen" />
-              <span className="text-sm font-semibold text-deepGreen">Ménage</span>
-            </button>
-            <button
-              onClick={() => updateField('userType', 'B2B')}
-              className={`p-3 rounded-15 border-2 flex items-center justify-center gap-2 ${settings.userType === 'B2B' ? 'border-earthOrange bg-earthOrange/5' : 'border-slate-200'}`}
-            >
-              <Building2 size={16} className="text-earthOrange" />
-              <span className="text-sm font-semibold text-deepGreen">Établissement</span>
-            </button>
-          </div>
+          {isAdminAccount ? (
+            <div className="p-3 rounded-12 bg-slate-50 border border-slate-200 text-sm text-deepGreen font-semibold">
+              Compte administrateur (type verrouillé)
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => updateField('userType', 'B2C')}
+                className={`p-3 rounded-15 border-2 flex items-center justify-center gap-2 ${settings.userType === 'B2C' ? 'border-bioGreen bg-bioGreen/5' : 'border-slate-200'}`}
+              >
+                <Home size={16} className="text-bioGreen" />
+                <span className="text-sm font-semibold text-deepGreen">Ménage</span>
+              </button>
+              <button
+                onClick={() => updateField('userType', 'B2B')}
+                className={`p-3 rounded-15 border-2 flex items-center justify-center gap-2 ${settings.userType === 'B2B' ? 'border-earthOrange bg-earthOrange/5' : 'border-slate-200'}`}
+              >
+                <Building2 size={16} className="text-earthOrange" />
+                <span className="text-sm font-semibold text-deepGreen">Établissement</span>
+              </button>
+            </div>
+          )}
           {settings.userType === 'B2B' && (
             <div className="mt-3 space-y-2">
               <input

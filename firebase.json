@@ -3,7 +3,11 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
+    "site": "studio-2853082048-41992",
     "public": "dist",
     "ignore": [
       "firebase.json",

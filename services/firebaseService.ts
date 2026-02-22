@@ -1,6 +1,21 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  query,
+  where,
+  orderBy
+} from 'firebase/firestore';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Category, Order, Product } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyt5CjOfLXiJWko4Y0gA735_EUEZHULo",
@@ -19,6 +34,7 @@ export const auth = getAuth(app);
 
 // Initialize Firestore
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 // Google Provider
 const googleProvider = new GoogleAuthProvider();
@@ -79,6 +95,152 @@ export const getUserData = async (uid: string) => {
     console.error('Error getting user data:', error);
     return null;
   }
+};
+
+export const getAllUsers = async () => {
+  try {
+    const snapshot = await getDocs(collection(db, 'users'));
+    return snapshot.docs.map((entry) => ({
+      uid: entry.id,
+      ...entry.data()
+    }));
+  } catch (error) {
+    console.error('Error getting users:', error);
+    return [];
+  }
+};
+
+export const onUserDataChange = (uid: string, callback: (data: any | null) => void) => {
+  return onSnapshot(
+    doc(db, 'users', uid),
+    (snapshot) => {
+      callback(snapshot.exists() ? snapshot.data() : null);
+    },
+    (error) => {
+      console.error('Error listening user data:', error);
+      callback(null);
+    }
+  );
+};
+
+export const onUsersChange = (callback: (users: any[]) => void) => {
+  return onSnapshot(
+    collection(db, 'users'),
+    (snapshot) => {
+      callback(snapshot.docs.map((entry) => ({ uid: entry.id, ...entry.data() })));
+    },
+    (error) => {
+      console.error('Error listening users:', error);
+      callback([]);
+    }
+  );
+};
+
+export const onProductsChange = (callback: (products: Product[]) => void) => {
+  return onSnapshot(
+    collection(db, 'products'),
+    (snapshot) => {
+      const data = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })) as Product[];
+      callback(data);
+    },
+    (error) => {
+      console.error('Error listening products:', error);
+      callback([]);
+    }
+  );
+};
+
+export const createProduct = async (payload: Omit<Product, 'id'>) => {
+  await addDoc(collection(db, 'products'), payload);
+};
+
+export const uploadProductMedia = async (files: File[]) => {
+  const images: string[] = [];
+  const videos: string[] = [];
+
+  for (const file of files) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storageRef = ref(storage, `product-media/${Date.now()}-${safeName}`);
+    await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(storageRef);
+
+    if (file.type.startsWith('video/')) {
+      videos.push(url);
+    } else {
+      images.push(url);
+    }
+  }
+
+  return { images, videos };
+};
+
+export const updateProduct = async (productId: string, payload: Partial<Product>) => {
+  await updateDoc(doc(db, 'products', productId), payload as any);
+};
+
+export const onCategoriesChange = (callback: (categories: Category[]) => void) => {
+  return onSnapshot(
+    collection(db, 'categories'),
+    (snapshot) => {
+      const data = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })) as Category[];
+      callback(data);
+    },
+    (error) => {
+      console.error('Error listening categories:', error);
+      callback([]);
+    }
+  );
+};
+
+export const createCategory = async (payload: Omit<Category, 'id'>) => {
+  await addDoc(collection(db, 'categories'), payload);
+};
+
+export const updateCategory = async (categoryId: string, payload: Partial<Category>) => {
+  await updateDoc(doc(db, 'categories', categoryId), payload as any);
+};
+
+export const onOrdersChange = (callback: (orders: Order[]) => void, uid?: string, includeAll: boolean = false) => {
+  const baseCollection = collection(db, 'orders');
+  const ordersQuery = includeAll
+    ? query(baseCollection, orderBy('created_at', 'desc'))
+    : query(baseCollection, where('user_id', '==', uid || ''));
+
+  return onSnapshot(
+    ordersQuery,
+    (snapshot) => {
+      const data = snapshot.docs
+        .map((entry) => ({ id: entry.id, ...entry.data() })) as Order[];
+      data.sort((a, b) => b.created_at - a.created_at);
+      callback(data);
+    },
+    (error) => {
+      console.error('Error listening orders:', error);
+      callback([]);
+    }
+  );
+};
+
+export const createOrder = async (payload: Omit<Order, 'id'>) => {
+  const created = await addDoc(collection(db, 'orders'), payload as any);
+  return created.id;
+};
+
+export const updateOrder = async (orderId: string, payload: Partial<Order>) => {
+  await updateDoc(doc(db, 'orders', orderId), payload as any);
+};
+
+export const createOrderStatusNotification = async (payload: {
+  user_id: string;
+  order_id: string;
+  status: Order['status'];
+  message: string;
+}) => {
+  await addDoc(collection(db, 'notifications'), {
+    ...payload,
+    created_at: Date.now(),
+    read: false
+  });
 };
 
 // Create or update user in Firestore

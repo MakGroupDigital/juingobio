@@ -1,25 +1,31 @@
 import React, { useMemo, useState } from 'react';
 import { Product, OrderItem } from '../../types';
-import { PRODUCTS } from '../../constants';
 import { ArrowLeft, ChevronLeft, ChevronRight, Package, ShoppingCart } from 'lucide-react';
 
 interface B2BDashboardProps {
   onAdd: (item: OrderItem) => void;
   language?: 'fr' | 'en';
+  products: Product[];
 }
 
 type B2BTier = '10kg' | '50kg';
 
-const B2BDashboard: React.FC<B2BDashboardProps> = ({ onAdd, language = 'fr' }) => {
+const B2BDashboard: React.FC<B2BDashboardProps> = ({ onAdd, language = 'fr', products }) => {
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedTier, setSelectedTier] = useState<B2BTier>('50kg');
   const [quantity, setQuantity] = useState(50);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  const availableProducts = useMemo(
+    () => products.filter((p) => p.is_active && (p.available_for || ['B2B', 'B2C']).includes('B2B')),
+    [products]
+  );
 
   const filtered = useMemo(
-    () => PRODUCTS.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
-    [search]
+    () => availableProducts.filter((p) => p.name.toLowerCase().includes(search.toLowerCase())),
+    [availableProducts, search]
   );
 
   const openProduct = (product: Product) => {
@@ -49,6 +55,11 @@ const B2BDashboard: React.FC<B2BDashboardProps> = ({ onAdd, language = 'fr' }) =
     const minQty = selectedTier === '50kg' ? 50 : 10;
     const safeQty = Math.max(minQty, quantity);
     const total = unitPrice * safeQty;
+    const selectedMedia = [
+      ...selectedProduct.images.map((src) => ({ type: 'image' as const, src })),
+      ...(selectedProduct.videos || []).map((src) => ({ type: 'video' as const, src }))
+    ];
+    const currentMedia = selectedMedia[currentImageIndex];
 
     return (
       <div className="h-full bg-[#F9FBF9] flex flex-col animate-in slide-in-from-right-10 duration-300">
@@ -62,21 +73,41 @@ const B2BDashboard: React.FC<B2BDashboardProps> = ({ onAdd, language = 'fr' }) =
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="relative rounded-30 overflow-hidden h-56 bg-slate-100">
-            <img
-              src={selectedProduct.images[currentImageIndex]}
-              alt={selectedProduct.name}
-              className="w-full h-full object-cover"
-            />
-            {selectedProduct.images.length > 1 && (
+            <div
+              className="w-full h-full"
+              onTouchStart={(e) => setTouchStartX(e.touches[0].clientX)}
+              onTouchEnd={(e) => {
+                if (touchStartX == null) return;
+                const delta = e.changedTouches[0].clientX - touchStartX;
+                if (delta <= -40 && selectedMedia.length > 1) {
+                  setCurrentImageIndex((prev) => (prev + 1) % selectedMedia.length);
+                }
+                if (delta >= 40 && selectedMedia.length > 1) {
+                  setCurrentImageIndex((prev) => (prev - 1 + selectedMedia.length) % selectedMedia.length);
+                }
+                setTouchStartX(null);
+              }}
+            >
+              {currentMedia?.type === 'video' ? (
+                <video src={currentMedia.src} className="w-full h-full object-cover bg-black" controls playsInline />
+              ) : (
+                <img
+                  src={currentMedia?.src || selectedProduct.images[0]}
+                  alt={selectedProduct.name}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </div>
+            {selectedMedia.length > 1 && (
               <>
                 <button
-                  onClick={() => setCurrentImageIndex((prev) => (prev - 1 + selectedProduct.images.length) % selectedProduct.images.length)}
+                  onClick={() => setCurrentImageIndex((prev) => (prev - 1 + selectedMedia.length) % selectedMedia.length)}
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 flex items-center justify-center"
                 >
                   <ChevronLeft size={18} className="text-deepGreen" />
                 </button>
                 <button
-                  onClick={() => setCurrentImageIndex((prev) => (prev + 1) % selectedProduct.images.length)}
+                  onClick={() => setCurrentImageIndex((prev) => (prev + 1) % selectedMedia.length)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 flex items-center justify-center"
                 >
                   <ChevronRight size={18} className="text-deepGreen" />
@@ -84,7 +115,7 @@ const B2BDashboard: React.FC<B2BDashboardProps> = ({ onAdd, language = 'fr' }) =
               </>
             )}
             <div className="absolute top-3 right-3 bg-black/50 text-white px-2 py-1 rounded-full text-[10px] font-bold">
-              {currentImageIndex + 1}/{selectedProduct.images.length}
+              {Math.min(currentImageIndex + 1, Math.max(1, selectedMedia.length))}/{Math.max(1, selectedMedia.length)}
             </div>
           </div>
 

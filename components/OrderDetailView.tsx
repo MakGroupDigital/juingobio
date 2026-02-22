@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Order } from '../types';
-import { ChevronRight, Home, Bike, MapPin, Clock, Phone } from 'lucide-react';
+import { ChevronRight, Home, Bike, Clock, Phone, Download } from 'lucide-react';
+import { downloadOrderDocumentAsJpg } from '../services/orderDocumentService';
 
 interface OrderDetailViewProps {
   order: Order;
@@ -9,6 +10,27 @@ interface OrderDetailViewProps {
 
 const OrderDetailView: React.FC<OrderDetailViewProps> = ({ order, onNav }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
+  const calcEtaMinutes = () => {
+    if (
+      typeof order.delivery_lat !== 'number' ||
+      typeof order.delivery_lng !== 'number' ||
+      typeof order.driver_lat !== 'number' ||
+      typeof order.driver_lng !== 'number'
+    ) {
+      return 20;
+    }
+    const toRad = (value: number) => (value * Math.PI) / 180;
+    const R = 6371;
+    const dLat = toRad(order.delivery_lat - order.driver_lat);
+    const dLng = toRad(order.delivery_lng - order.driver_lng);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(order.driver_lat)) * Math.cos(toRad(order.delivery_lat)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const distanceKm = R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    const minutes = Math.round((distanceKm / 28) * 60);
+    return Math.max(2, minutes);
+  };
+  const etaMinutes = calcEtaMinutes();
 
   useEffect(() => {
     // Initialize Leaflet map with OpenStreetMap
@@ -95,6 +117,17 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({ order, onNav }) => {
     return progress[status] || 0;
   };
 
+  const isInvoice = order.payment_status === 'due_on_delivery' || order.payment_method === 'cash_on_delivery';
+  const paymentMethodLabel = order.payment_method === 'cash_on_delivery'
+    ? 'Paiement a la livraison'
+    : order.payment_method === 'mobile'
+      ? 'Mobile Money'
+      : order.payment_method === 'debit'
+        ? 'Carte Debit'
+        : order.payment_method === 'credit'
+          ? 'Carte Credit'
+          : 'Non specifie';
+
   return (
     <div className="h-full bg-[#F9FBF9] flex flex-col">
       {/* Header */}
@@ -121,7 +154,7 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({ order, onNav }) => {
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-deepGreen">{order.driver_name || 'Livreur'}</p>
-                  <p className="text-xs text-slate-500">Moto JuingoBIO</p>
+                  <p className="text-xs text-slate-500">Moto JuingoBIO{order.driver_phone ? ` • ${order.driver_phone}` : ''}</p>
                 </div>
                 <button className="w-10 h-10 rounded-full bg-bioGreen text-white flex items-center justify-center">
                   <Phone size={18} />
@@ -131,7 +164,7 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({ order, onNav }) => {
               {/* ETA */}
               <div className="flex items-center gap-2 text-sm">
                 <Clock size={16} className="text-earthOrange" />
-                <span className="font-semibold text-deepGreen">Livraison dans ~20 minutes</span>
+                <span className="font-semibold text-deepGreen">Livraison dans ~{etaMinutes} minutes</span>
               </div>
             </div>
           </div>
@@ -197,6 +230,27 @@ const OrderDetailView: React.FC<OrderDetailViewProps> = ({ order, onNav }) => {
               <p className="text-sm font-semibold text-deepGreen">{order.delivery_address}</p>
               <p className="text-xs text-slate-500 mt-1">Livraison à domicile</p>
             </div>
+          </div>
+        </div>
+
+        <div className="p-6 bg-white border-b border-slate-100">
+          <h3 className="font-bold text-deepGreen mb-3">Paiement</h3>
+          <div className="rounded-20 bg-slate-50 border border-slate-100 p-4">
+            <p className="text-sm text-slate-600">
+              Mode: <span className="font-semibold text-deepGreen">{paymentMethodLabel}</span>
+            </p>
+            <p className="text-sm text-slate-600 mt-1">
+              Statut: <span className={`font-semibold ${isInvoice ? 'text-earthOrange' : 'text-bioGreen'}`}>
+                {isInvoice ? 'A payer a la livraison' : 'Deja paye'}
+              </span>
+            </p>
+            <button
+              onClick={() => void downloadOrderDocumentAsJpg(order)}
+              className="mt-4 w-full bg-deepGreen text-white py-3 rounded-15 font-bold text-sm flex items-center justify-center gap-2"
+            >
+              <Download size={16} />
+              {isInvoice ? 'Telecharger la facture (JPG)' : 'Telecharger le recu (JPG)'}
+            </button>
           </div>
         </div>
 

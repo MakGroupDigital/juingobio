@@ -14,6 +14,7 @@ export interface Product {
   name: string;
   description: string;
   category: string;
+  available_for?: UserType[];
   price_b2c: number;
   price_b2b_tier: {
     "10kg": number;
@@ -21,6 +22,7 @@ export interface Product {
   };
   unit: 'kg' | 'unit' | 'box';
   images: string[];
+  videos?: string[];
   producer_id: string;
   stock: number;
   is_active: boolean;
@@ -34,7 +36,14 @@ export interface OrderItem {
   image: string; // Denormalized for performance
 }
 
-export type UserType = 'B2B' | 'B2C';
+export type UserType = 'B2B' | 'B2C' | 'ADMIN';
+
+export interface Category {
+  id: string;
+  name: string;
+  target: 'B2B' | 'B2C' | 'ALL';
+  is_active: boolean;
+}
 
 export interface AppPreferences {
   language: 'fr' | 'en';
@@ -47,6 +56,8 @@ export interface Order {
   user_id: string;
   user_type: UserType;
   items: OrderItem[];
+  payment_method?: 'mobile' | 'debit' | 'credit' | 'cash_on_delivery';
+  payment_status?: 'paid' | 'due_on_delivery';
   status: 'pending' | 'processing' | 'delivering' | 'completed';
   total_ht: number;
   total_ttc: number;
@@ -57,7 +68,20 @@ export interface Order {
   driver_lat?: number;
   driver_lng?: number;
   driver_name?: string;
+  driver_phone?: string;
   estimated_delivery?: number;
+  arrival_notified_at?: number;
+}
+
+export interface ManagedUser {
+  uid: string;
+  email?: string;
+  displayName?: string;
+  photoURL?: string;
+  phone?: string;
+  userType?: UserType;
+  establishmentType?: string;
+  onboardingCompleted?: boolean;
 }
 
 export interface DeliveryLocation {
