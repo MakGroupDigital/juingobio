@@ -5,12 +5,13 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Package, ShoppingCart } from 'luc
 interface B2BDashboardProps {
   onAdd: (item: OrderItem) => void;
   language?: 'fr' | 'en';
+  readOnly?: boolean;
   products: Product[];
 }
 
 type B2BTier = '10kg' | '50kg';
 
-const B2BDashboard: React.FC<B2BDashboardProps> = ({ onAdd, language = 'fr', products }) => {
+const B2BDashboard: React.FC<B2BDashboardProps> = ({ onAdd, language = 'fr', readOnly = false, products }) => {
   const [search, setSearch] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -172,17 +173,23 @@ const B2BDashboard: React.FC<B2BDashboardProps> = ({ onAdd, language = 'fr', pro
             <span className="text-xs uppercase tracking-wider text-slate-500 font-bold">{language === 'en' ? 'Estimated Total' : 'Total estimé'}</span>
             <span className="text-xl font-bold text-earthOrange">{total.toLocaleString()} CDF</span>
           </div>
-          <button
-            onClick={() => {
-              addToCart(selectedProduct, safeQty, selectedTier);
-              setSelectedProduct(null);
-            }}
-            disabled={selectedProduct.stock === 0}
-            className="w-full py-3 rounded-20 bg-gradient-to-r from-deepGreen via-bioGreen to-earthOrange text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            <ShoppingCart size={16} />
-            {language === 'en' ? 'Add to Cart' : 'Ajouter au panier'}
-          </button>
+          {readOnly ? (
+            <div className="w-full py-3 rounded-20 bg-slate-100 text-slate-600 font-bold text-center text-sm border border-slate-200">
+              Mode aperçu admin - commande désactivée
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                addToCart(selectedProduct, safeQty, selectedTier);
+                setSelectedProduct(null);
+              }}
+              disabled={selectedProduct.stock === 0}
+              className="w-full py-3 rounded-20 bg-gradient-to-r from-deepGreen via-bioGreen to-earthOrange text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <ShoppingCart size={16} />
+              {language === 'en' ? 'Add to Cart' : 'Ajouter au panier'}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -236,12 +243,13 @@ const B2BDashboard: React.FC<B2BDashboardProps> = ({ onAdd, language = 'fr', pro
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (readOnly) return;
                     addToCart(product, 50, '50kg');
                   }}
-                  disabled={product.stock === 0}
+                  disabled={product.stock === 0 || readOnly}
                   className="w-full bg-gradient-to-r from-deepGreen to-bioGreen text-white py-2 rounded-15 text-xs font-bold active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  +50kg
+                  {readOnly ? 'Aperçu' : '+50kg'}
                 </button>
               </div>
             </div>

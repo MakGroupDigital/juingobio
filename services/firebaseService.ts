@@ -15,7 +15,7 @@ import {
   orderBy
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Category, Order, Product } from '../types';
+import { Category, FinanceTransaction, Order, Product, TransactionStatus } from '../types';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAoyt5CjOfLXiJWko4Y0gA735_EUEZHULo",
@@ -238,6 +238,54 @@ export const createOrderStatusNotification = async (payload: {
 }) => {
   await addDoc(collection(db, 'notifications'), {
     ...payload,
+    type: 'order_status',
+    created_at: Date.now(),
+    read: false
+  });
+};
+
+export const onTransactionsChange = (callback: (transactions: FinanceTransaction[]) => void) => {
+  const transactionsQuery = query(collection(db, 'transactions'), orderBy('created_at', 'desc'));
+  return onSnapshot(
+    transactionsQuery,
+    (snapshot) => {
+      const data = snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })) as FinanceTransaction[];
+      callback(data);
+    },
+    (error) => {
+      console.error('Error listening transactions:', error);
+      callback([]);
+    }
+  );
+};
+
+export const createTransaction = async (payload: Omit<FinanceTransaction, 'id' | 'created_at' | 'updated_at'>) => {
+  const now = Date.now();
+  const created = await addDoc(collection(db, 'transactions'), {
+    ...payload,
+    created_at: now,
+    updated_at: now
+  });
+  return created.id;
+};
+
+export const updateTransaction = async (transactionId: string, payload: Partial<FinanceTransaction>) => {
+  await updateDoc(doc(db, 'transactions', transactionId), {
+    ...payload,
+    updated_at: Date.now()
+  } as any);
+};
+
+export const createFinanceNotification = async (payload: {
+  user_id: string;
+  transaction_id: string;
+  amount: number;
+  status: TransactionStatus;
+  message: string;
+}) => {
+  await addDoc(collection(db, 'notifications'), {
+    ...payload,
+    type: 'finance',
     created_at: Date.now(),
     read: false
   });

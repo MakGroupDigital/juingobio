@@ -1,13 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Category, ManagedUser, Order, Product, UserType } from '../types';
-import { ArrowLeft, Boxes, PackageSearch, Pencil, Plus, ShoppingBag, Users, X } from 'lucide-react';
+import { Category, FinanceTransaction, Order, Product, TransactionMethod, TransactionStatus, ManagedUser, UserType } from '../types';
+import { ArrowLeft, Boxes, HandCoins, PackageSearch, Pencil, Plus, ShoppingBag, Store, Users, X } from 'lucide-react';
 import { geocodeAddress } from '../services/geocodingService';
+import B2BDashboard from './B2B/B2BDashboard';
+import B2CMarketplace from './B2C/B2CMarketplace';
 
 interface AdminDashboardProps {
   onNav: (view: string) => void;
   products: Product[];
   categories: Category[];
   orders: Order[];
+  transactions: FinanceTransaction[];
   users: ManagedUser[];
   onCreateProduct: (payload: Omit<Product, 'id'>, mediaFiles: File[]) => Promise<{ success: boolean; error?: string }>;
   onUpdateProduct: (productId: string, payload: Partial<Omit<Product, 'id'>>, mediaFiles: File[]) => Promise<{ success: boolean; error?: string }>;
@@ -21,9 +24,11 @@ interface AdminDashboardProps {
   onCreateCategory: (name: string, target: Category['target']) => void;
   onToggleCategoryActive: (categoryId: string) => void;
   onUpdateUserType: (uid: string, userType: UserType) => void;
+  onCreateTransaction: (payload: Omit<FinanceTransaction, 'id' | 'created_at' | 'updated_at'>) => Promise<{ success: boolean; error?: string }>;
+  onUpdateTransactionStatus: (transactionId: string, status: TransactionStatus, options?: { notes?: string }) => void;
 }
 
-type Tab = 'orders' | 'products' | 'categories' | 'users';
+type Tab = 'orders' | 'products' | 'categories' | 'users' | 'store-preview' | 'finance';
 
 const ORDER_STATUS: Order['status'][] = ['pending', 'processing', 'delivering', 'completed'];
 const STATUS_LABEL: Record<Order['status'], string> = {
@@ -46,6 +51,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   products,
   categories,
   orders,
+  transactions,
   users,
   onCreateProduct,
   onUpdateProduct,
@@ -54,10 +60,29 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onCreateCategory,
   onToggleCategoryActive,
   onUpdateUserType,
+  onCreateTransaction,
+  onUpdateTransactionStatus,
   onUpdateDriverPosition
 }) => {
   const [tab, setTab] = useState<Tab>('orders');
   const [selectedUserUid, setSelectedUserUid] = useState<string | null>(null);
+  const [previewAudience, setPreviewAudience] = useState<'B2C' | 'B2B'>('B2C');
+  const [financeFilter, setFinanceFilter] = useState<TransactionStatus | 'all'>('all');
+  const [showFinanceForm, setShowFinanceForm] = useState(false);
+  const [financeFormError, setFinanceFormError] = useState<string | null>(null);
+  const [isSubmittingFinance, setIsSubmittingFinance] = useState(false);
+  const [newTransaction, setNewTransaction] = useState({
+    order_id: '',
+    user_id: '',
+    user_type: 'B2C' as UserType,
+    kind: 'order_payment' as FinanceTransaction['kind'],
+    status: 'pending' as TransactionStatus,
+    method: 'mobile' as TransactionMethod,
+    amount: 0,
+    currency: 'CDF',
+    reference: '',
+    notes: ''
+  });
   const [newCategory, setNewCategory] = useState({ name: '', target: 'ALL' as Category['target'] });
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [showProductForm, setShowProductForm] = useState(false);
@@ -114,13 +139,69 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const pending = orders.filter((order) => order.status !== 'completed').length;
     const b2bProducts = products.filter((product) => (product.available_for || ['B2B', 'B2C']).includes('B2B')).length;
     const b2cProducts = products.filter((product) => (product.available_for || ['B2B', 'B2C']).includes('B2C')).length;
-    return { pending, b2bProducts, b2cProducts };
-  }, [orders, products]);
+    const revenue = transactions
+      .filter((entry) => entry.status === 'paid' || entry.status === 'approved')
+      .reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+    const waiting = transactions.filter((entry) => entry.status === 'pending').length;
+    return { pending, b2bProducts, b2cProducts, revenue, waiting };
+  }, [orders, products, transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    const source = [...transactions].sort((a, b) => b.created_at - a.created_at);
+    if (financeFilter === 'all') return source;
+    return source.filter((entry) => entry.status === financeFilter);
+  }, [transactions, financeFilter]);
 
   const selectedUser = useMemo(
     () => users.find((entry) => entry.uid === selectedUserUid) || null,
     [users, selectedUserUid]
   );
+
+  const handleCreateFinanceTransaction = async () => {
+    setFinanceFormError(null);
+    if (!Number.isFinite(newTransaction.amount) || Number(newTransaction.amount) <= 0) {
+      setFinanceFormError('Montant invalide.');
+      return;
+    }
+
+    setIsSubmittingFinance(true);
+    try {
+      const result = await onCreateTransaction({
+        order_id: newTransaction.order_id.trim() || undefined,
+        user_id: newTransaction.user_id.trim() || undefined,
+        user_type: newTransaction.user_type,
+        kind: newTransaction.kind,
+        status: newTransaction.status,
+        method: newTransaction.method,
+        amount: Number(newTransaction.amount),
+        currency: (newTransaction.currency || 'CDF').toUpperCase(),
+        reference: newTransaction.reference.trim() || undefined,
+        notes: newTransaction.notes.trim() || undefined,
+        created_by: 'admin'
+      });
+
+      if (!result.success) {
+        setFinanceFormError(result.error || 'Erreur création transaction');
+        return;
+      }
+
+      setShowFinanceForm(false);
+      setNewTransaction({
+        order_id: '',
+        user_id: '',
+        user_type: 'B2C',
+        kind: 'order_payment',
+        status: 'pending',
+        method: 'mobile',
+        amount: 0,
+        currency: 'CDF',
+        reference: '',
+        notes: ''
+      });
+    } finally {
+      setIsSubmittingFinance(false);
+    }
+  };
 
   const handleCreateProduct = async () => {
     setProductFormError(null);
@@ -238,11 +319,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      <div className="px-4 pt-3 grid grid-cols-4 gap-2">
+      <div className="px-4 pt-2 grid grid-cols-2 gap-2">
+        <div className="bg-white rounded-15 p-3 border border-slate-100">
+          <p className="text-[11px] text-slate-500">Revenus validés</p>
+          <p className="text-lg font-bold text-deepGreen">{stats.revenue.toFixed(2)} CDF</p>
+        </div>
+        <div className="bg-white rounded-15 p-3 border border-slate-100">
+          <p className="text-[11px] text-slate-500">Transactions en attente</p>
+          <p className="text-lg font-bold text-earthOrange">{stats.waiting}</p>
+        </div>
+      </div>
+
+      <div className="px-4 pt-3 grid grid-cols-6 gap-2">
         <button onClick={() => setTab('orders')} className={`h-10 rounded-12 text-xs font-bold flex items-center justify-center gap-1 ${tab === 'orders' ? 'bg-deepGreen text-white' : 'bg-white text-deepGreen border border-slate-200'}`}><PackageSearch size={14} />Commandes</button>
         <button onClick={() => setTab('products')} className={`h-10 rounded-12 text-xs font-bold flex items-center justify-center gap-1 ${tab === 'products' ? 'bg-deepGreen text-white' : 'bg-white text-deepGreen border border-slate-200'}`}><ShoppingBag size={14} />Produits</button>
         <button onClick={() => setTab('categories')} className={`h-10 rounded-12 text-xs font-bold flex items-center justify-center gap-1 ${tab === 'categories' ? 'bg-deepGreen text-white' : 'bg-white text-deepGreen border border-slate-200'}`}><Boxes size={14} />Catégories</button>
         <button onClick={() => setTab('users')} className={`h-10 rounded-12 text-xs font-bold flex items-center justify-center gap-1 ${tab === 'users' ? 'bg-deepGreen text-white' : 'bg-white text-deepGreen border border-slate-200'}`}><Users size={14} />Utilisateurs</button>
+        <button onClick={() => setTab('store-preview')} className={`h-10 rounded-12 text-xs font-bold flex items-center justify-center gap-1 ${tab === 'store-preview' ? 'bg-deepGreen text-white' : 'bg-white text-deepGreen border border-slate-200'}`}><Store size={14} />Magasin</button>
+        <button onClick={() => setTab('finance')} className={`h-10 rounded-12 text-xs font-bold flex items-center justify-center gap-1 ${tab === 'finance' ? 'bg-deepGreen text-white' : 'bg-white text-deepGreen border border-slate-200'}`}><HandCoins size={14} />Finance</button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
@@ -830,6 +924,206 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
                 </div>
               ))
+            )}
+          </div>
+        )}
+
+        {tab === 'store-preview' && (
+          <div className="space-y-3">
+            <div className="bg-white rounded-20 p-4 border border-slate-100">
+              <p className="text-sm font-bold text-deepGreen">Vue magasin (aperçu admin)</p>
+              <p className="text-xs text-slate-500 mt-1">Cette vue reflète le rendu client, mais les commandes sont désactivées.</p>
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <button
+                  onClick={() => setPreviewAudience('B2C')}
+                  className={`h-10 rounded-12 text-xs font-semibold ${previewAudience === 'B2C' ? 'bg-bioGreen text-white' : 'bg-slate-100 text-slate-700'}`}
+                >
+                  Vue Ménage (B2C)
+                </button>
+                <button
+                  onClick={() => setPreviewAudience('B2B')}
+                  className={`h-10 rounded-12 text-xs font-semibold ${previewAudience === 'B2B' ? 'bg-earthOrange text-white' : 'bg-slate-100 text-slate-700'}`}
+                >
+                  Vue Établissement (B2B)
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-20 border border-slate-100 overflow-hidden">
+              {previewAudience === 'B2C' ? (
+                <B2CMarketplace
+                  onAdd={() => {}}
+                  language="fr"
+                  dataSaverMode={false}
+                  products={products}
+                  categories={categories}
+                  readOnly
+                />
+              ) : (
+                <B2BDashboard
+                  onAdd={() => {}}
+                  language="fr"
+                  products={products}
+                  readOnly
+                />
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === 'finance' && (
+          <div className="space-y-3">
+            <div className="bg-white rounded-20 p-4 border border-slate-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-deepGreen">Transactions financières</p>
+                  <p className="text-xs text-slate-500">Paiements, remboursements, ajustements et suivi des statuts.</p>
+                </div>
+                <button
+                  onClick={() => setShowFinanceForm(true)}
+                  className="h-9 px-3 rounded-12 bg-deepGreen text-white text-xs font-bold flex items-center gap-1"
+                >
+                  <Plus size={14} />
+                  Nouvelle transaction
+                </button>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2 mt-3">
+                {(['all', 'pending', 'approved', 'paid'] as const).map((status) => (
+                  <button
+                    key={`filter-${status}`}
+                    onClick={() => setFinanceFilter(status)}
+                    className={`h-9 rounded-12 text-xs font-semibold ${financeFilter === status ? 'bg-earthOrange text-white' : 'bg-slate-100 text-slate-700'}`}
+                  >
+                    {status === 'all' ? 'Tous' : status}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filteredTransactions.length === 0 ? (
+              <div className="bg-white rounded-20 p-6 border border-slate-100 text-center text-sm text-slate-500">
+                Aucune transaction pour ce filtre.
+              </div>
+            ) : (
+              filteredTransactions.map((transaction) => (
+                <div key={transaction.id} className="bg-white rounded-20 p-4 border border-slate-100">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-deepGreen">#{transaction.id.slice(0, 8)}</p>
+                      <p className="text-xs text-slate-500">
+                        {transaction.kind} • {transaction.method} • {new Date(transaction.created_at).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {transaction.order_id ? `Commande #${transaction.order_id}` : 'Sans commande'} • {transaction.user_id || 'User non défini'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-earthOrange">{Number(transaction.amount || 0).toFixed(2)} {transaction.currency || 'CDF'}</p>
+                      <span className={`inline-flex mt-1 px-2 py-1 rounded-full text-[10px] font-bold ${
+                        transaction.status === 'paid' ? 'bg-bioGreen/10 text-bioGreen' :
+                        transaction.status === 'approved' ? 'bg-deepGreen/10 text-deepGreen' :
+                        transaction.status === 'pending' ? 'bg-earthOrange/10 text-earthOrange' :
+                        'bg-slate-100 text-slate-600'
+                      }`}>
+                        {transaction.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {transaction.notes && (
+                    <p className="mt-2 text-xs text-slate-600 bg-slate-50 rounded-12 p-2">{transaction.notes}</p>
+                  )}
+
+                  <div className="grid grid-cols-4 gap-2 mt-3">
+                    <button
+                      onClick={() => onUpdateTransactionStatus(transaction.id, 'pending')}
+                      className="h-8 rounded-10 bg-slate-100 text-[11px] font-semibold text-slate-700"
+                    >
+                      pending
+                    </button>
+                    <button
+                      onClick={() => onUpdateTransactionStatus(transaction.id, 'approved')}
+                      className="h-8 rounded-10 bg-deepGreen/10 text-[11px] font-semibold text-deepGreen"
+                    >
+                      approved
+                    </button>
+                    <button
+                      onClick={() => onUpdateTransactionStatus(transaction.id, 'paid')}
+                      className="h-8 rounded-10 bg-bioGreen/10 text-[11px] font-semibold text-bioGreen"
+                    >
+                      paid
+                    </button>
+                    <button
+                      onClick={() => onUpdateTransactionStatus(transaction.id, 'refunded')}
+                      className="h-8 rounded-10 bg-red-50 text-[11px] font-semibold text-red-500"
+                    >
+                      refunded
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+
+            {showFinanceForm && (
+              <div className="fixed inset-0 z-40 bg-black/35 p-4 flex items-end sm:items-center justify-center">
+                <div className="absolute inset-0" onClick={() => setShowFinanceForm(false)}></div>
+                <div className="relative w-full max-w-lg bg-white rounded-20 p-4 border border-slate-100 space-y-3 max-h-[92vh] overflow-y-auto">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-deepGreen">Nouvelle transaction</p>
+                    <button onClick={() => setShowFinanceForm(false)} className="w-9 h-9 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input className="bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" placeholder="Order ID (optionnel)" value={newTransaction.order_id} onChange={(e) => setNewTransaction((prev) => ({ ...prev, order_id: e.target.value }))} />
+                    <input className="bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" placeholder="User ID (optionnel)" value={newTransaction.user_id} onChange={(e) => setNewTransaction((prev) => ({ ...prev, user_id: e.target.value }))} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <select className="bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" value={newTransaction.user_type} onChange={(e) => setNewTransaction((prev) => ({ ...prev, user_type: e.target.value as UserType }))}>
+                      <option value="B2C">B2C</option>
+                      <option value="B2B">B2B</option>
+                    </select>
+                    <select className="bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" value={newTransaction.kind} onChange={(e) => setNewTransaction((prev) => ({ ...prev, kind: e.target.value as FinanceTransaction['kind'] }))}>
+                      <option value="order_payment">order_payment</option>
+                      <option value="refund">refund</option>
+                      <option value="payout">payout</option>
+                      <option value="adjustment">adjustment</option>
+                    </select>
+                    <select className="bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" value={newTransaction.status} onChange={(e) => setNewTransaction((prev) => ({ ...prev, status: e.target.value as TransactionStatus }))}>
+                      <option value="pending">pending</option>
+                      <option value="approved">approved</option>
+                      <option value="paid">paid</option>
+                      <option value="failed">failed</option>
+                      <option value="refunded">refunded</option>
+                      <option value="cancelled">cancelled</option>
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <select className="bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" value={newTransaction.method} onChange={(e) => setNewTransaction((prev) => ({ ...prev, method: e.target.value as TransactionMethod }))}>
+                      <option value="mobile">mobile</option>
+                      <option value="debit">debit</option>
+                      <option value="credit">credit</option>
+                      <option value="cash_on_delivery">cash_on_delivery</option>
+                      <option value="bank_transfer">bank_transfer</option>
+                      <option value="cash">cash</option>
+                      <option value="other">other</option>
+                    </select>
+                    <input type="number" min="0" step="0.01" className="bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" placeholder="Montant" value={newTransaction.amount} onChange={(e) => setNewTransaction((prev) => ({ ...prev, amount: Number(e.target.value) || 0 }))} />
+                    <input className="bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" placeholder="Devise" value={newTransaction.currency} onChange={(e) => setNewTransaction((prev) => ({ ...prev, currency: e.target.value }))} />
+                  </div>
+                  <input className="w-full bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" placeholder="Référence (optionnel)" value={newTransaction.reference} onChange={(e) => setNewTransaction((prev) => ({ ...prev, reference: e.target.value }))} />
+                  <textarea className="w-full bg-slate-50 rounded-12 px-3 py-2 text-sm outline-none" placeholder="Notes (optionnel)" value={newTransaction.notes} onChange={(e) => setNewTransaction((prev) => ({ ...prev, notes: e.target.value }))} />
+                  {financeFormError && <p className="text-xs font-semibold text-red-500">{financeFormError}</p>}
+                  <button
+                    onClick={handleCreateFinanceTransaction}
+                    disabled={isSubmittingFinance}
+                    className={`w-full h-10 rounded-12 text-sm font-bold ${isSubmittingFinance ? 'bg-slate-300 text-slate-600' : 'bg-deepGreen text-white'}`}
+                  >
+                    {isSubmittingFinance ? 'Création...' : 'Créer transaction'}
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}

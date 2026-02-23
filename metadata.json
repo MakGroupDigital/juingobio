@@ -1,6 +1,18 @@
 {
   "name": "JuingoBIO Premium",
-  "description": "Plateforme premium de distribution de produits bio en circuit court pour B2B et B2C.",
+  "description": "Plateforme premium de distribution de produits bio en circuit court pour B2B et B2C, avec fournisseurs directs et producteurs certifies.",
+  "keywords": [
+    "produits bio",
+    "fournisseurs directs bio",
+    "producteurs bio",
+    "circuit court",
+    "grossiste bio",
+    "marketplace bio B2B",
+    "marketplace bio B2C",
+    "livraison produits bio",
+    "alimentation saine"
+  ],
+  "category": "food-and-drink",
   "requestFramePermissions": [
     "camera",
     "microphone",

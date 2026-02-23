@@ -4,12 +4,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="JuingoBIO: marketplace premium de produits bio en circuit court, fournisseurs directs, producteurs certifiés, offres B2B et B2C.">
+    <meta name="keywords" content="produits bio, circuit court, fournisseurs directs bio, producteurs bio, grossiste bio, marketplace bio B2B B2C, alimentation saine">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta name="author" content="JuingoBIO">
+    <meta name="application-name" content="JuingoBIO">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#1A3C34">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="JuingoBIO">
+    <meta property="og:title" content="JuingoBIO | Produits bio et fournisseurs directs">
+    <meta property="og:description" content="Marketplace bio premium: produits bio certifiés, circuit court et fournisseurs directs pour professionnels et particuliers.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="JuingoBIO">
+    <meta property="og:image" content="/icons/icon-512.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="JuingoBIO | Produits bio premium">
+    <meta name="twitter:description" content="Commandez des produits bio en direct fournisseurs avec traçabilité et livraison rapide.">
+    <meta name="twitter:image" content="/icons/icon-512.png">
     <title>JuingoBIO - Circuit Court Premium</title>
+    <link rel="canonical" href="/">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
@@ -70,6 +86,14 @@
           to { transform: scale(1.05); }
         }
         .animate-subtle-zoom { animation: subtle-zoom 20s infinite alternate ease-in-out; }
+        @keyframes jb-marquee {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .jb-marquee-track {
+          width: max-content;
+          animation: jb-marquee 14s linear infinite;
+        }
     </style>
 <script type="importmap">
 {
@@ -83,6 +107,17 @@
 }
 </script>
 <link rel="stylesheet" href="/index.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "JuingoBIO",
+  "url": "/",
+  "description": "Marketplace premium de produits bio en circuit court pour B2B et B2C.",
+  "inLanguage": "fr",
+  "keywords": "produits bio, fournisseurs directs, circuit court, grossiste bio, producteurs bio"
+}
+</script>
 </head>
 <body>
     <div id="root"></div>

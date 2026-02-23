@@ -88,3 +88,24 @@ export interface DeliveryLocation {
   lat: number;
   lng: number;
 }
+
+export type TransactionKind = 'order_payment' | 'refund' | 'payout' | 'adjustment';
+export type TransactionStatus = 'pending' | 'approved' | 'paid' | 'failed' | 'refunded' | 'cancelled';
+export type TransactionMethod = 'mobile' | 'debit' | 'credit' | 'cash_on_delivery' | 'bank_transfer' | 'cash' | 'other';
+
+export interface FinanceTransaction {
+  id: string;
+  order_id?: string;
+  user_id?: string;
+  user_type?: UserType;
+  kind: TransactionKind;
+  status: TransactionStatus;
+  method: TransactionMethod;
+  amount: number;
+  currency: string;
+  reference?: string;
+  notes?: string;
+  created_at: number;
+  updated_at: number;
+  created_by?: string;
+}

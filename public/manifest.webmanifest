@@ -2,7 +2,7 @@
   "id": "/",
   "name": "JuingoBIO",
   "short_name": "JuingoBIO",
-  "description": "Marketplace bio premium pour ménages et établissements.",
+  "description": "Marketplace bio premium: produits bio certifies, circuit court, fournisseurs directs et producteurs locaux pour B2B et B2C.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -11,7 +11,7 @@
   "theme_color": "#1A3C34",
   "lang": "fr",
   "dir": "ltr",
-  "categories": ["shopping", "food", "business"],
+  "categories": ["shopping", "food", "business", "lifestyle", "health"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
@@ -58,16 +58,19 @@
     {
       "name": "Marché",
       "short_name": "Marché",
+      "description": "Découvrir des produits bio premium et des fournisseurs directs.",
       "url": "/?view=main"
     },
     {
       "name": "Panier",
       "short_name": "Panier",
+      "description": "Finaliser une commande de produits bio en circuit court.",
       "url": "/?view=cart"
     },
     {
       "name": "Commandes",
       "short_name": "Commandes",
+      "description": "Suivre les commandes et livraisons de produits bio.",
       "url": "/?view=orders"
     }
   ]
