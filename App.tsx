@@ -815,11 +815,14 @@ const App: React.FC = () => {
           <div className="h-full bg-deepGreen flex flex-col">
             <div className="h-[60%] relative overflow-hidden rounded-b-[40px]">
               <video
-                src="/onbordingvideo.mp4"
+                src="https://res.cloudinary.com/dy73hzkpm/video/upload/v1772053087/onbordingvideo_flbjap.mp4"
                 className="w-full h-full object-cover animate-subtle-zoom"
-                autoPlay={!appPreferences.dataSaver}
+                autoPlay
                 muted
-                loop={!appPreferences.dataSaver}
+                loop
+                playsInline
+                preload="auto"
+                style={{ pointerEvents: 'none' }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-deepGreen/80 to-transparent"></div>
               <div className="absolute bottom-10 left-8 right-8 animate-in slide-in-from-bottom-8 duration-1000">

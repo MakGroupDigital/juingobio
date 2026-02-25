@@ -24,34 +24,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
-    },
-    {
-      "src": "/icons/maskable-1024.png",
-      "sizes": "1024x1024",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/icon.svg",
-      "sizes": "1024x1024",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/home-mobile.png",
-      "sizes": "640x640",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Accueil mobile JuingoBIO"
-    },
-    {
-      "src": "/screenshots/home-desktop.png",
-      "sizes": "1280x1280",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Accueil desktop JuingoBIO"
     }
   ],
   "shortcuts": [
